@@ -1,4 +1,4 @@
-#include<social_state_machine/social_state_machine.h>
+#include <social_state_machine/social_state_machine.h>
 #include <pluginlib/class_list_macros.h>
 
 PLUGINLIB_EXPORT_CLASS(social_state_machine::SocialStateMachine, move_base::StateMachine)
@@ -60,6 +60,7 @@ void SocialStateMachine::initialize(tf::TransformListener* tf, move_base::Global
     dynamic_reconfigure::Server<social_state_machine::SocialStateMachineConfig>::CallbackType cb = boost::bind(&SocialStateMachine::reconfigureCB, this, _1, _2);
     dsrv_->setCallback(cb);
     
+    peopleSub_ = private_nh.subscribe("/people", 1, &SocialStateMachine::peopleCB, this);
     
     head_.waitForServer();
     if(enabled_[3])
@@ -71,6 +72,10 @@ void SocialStateMachine::initialize(tf::TransformListener* tf, move_base::Global
     
     
     reset();
+}
+
+void SocialStateMachine::peopleCB(const people_msgs::People& people){
+    people_list_ = people;
 }
 
 void SocialStateMachine::reconfigureCB(social_state_machine::SocialStateMachineConfig &config, uint32_t level){
@@ -141,7 +146,7 @@ void SocialStateMachine::executeCycle(int* status, std::string* message)
             if(controller_->getState()==FINISHED){
                 advance();
             }else{
-                lookatpath();
+                lookatgoal();
                 return;
             }
             break;
@@ -160,6 +165,10 @@ void SocialStateMachine::executeCycle(int* status, std::string* message)
             lookup();
             break;
         case S_LOOK_AROUND:
+            if(rand() % 2) {
+                lookatface();
+                break;
+            }
         case S_END_LOOK_AROUND:
             lookaround();
             break;
@@ -233,6 +242,26 @@ void SocialStateMachine::lookatpath(){
     point_goal_.target.point = plan_[i].pose.position;
     active_[2] = true;
     point_head_.sendGoal(point_goal_);
+}
+
+void SocialStateMachine::lookatface(){
+    // Need to decide which face to look at. Randomly probably isn't best, but it's easy.
+    // Since they come in in a random order, let's just take the first
+    if(!people_list_.people.empty()){
+        point_goal_.target.header = people_list_.header;
+        point_goal_.target.point = people_list_.people.front().position;
+        active_[2] = true;
+        point_head_.sendGoal(point_goal_);
+    }
+}
+
+void SocialStateMachine::lookatgoal(){
+    if(!plan_.empty()){
+        point_goal_.target.header = plan_.back().header;
+        point_goal_.target.point = plan_.back().pose.position;
+        active_[2] = true;   
+        point_head_.sendGoal(point_goal_);
+    }
 }
 
 void SocialStateMachine::spineup()

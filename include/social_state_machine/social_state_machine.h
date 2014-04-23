@@ -8,6 +8,9 @@
 #include <trajectory_msgs/JointTrajectoryPoint.h>
 #include <control_msgs/JointTrajectoryAction.h>
 #include <control_msgs/PointHeadAction.h>
+#include <people_msgs/People.h>
+#include <people_msgs/Person.h>
+#include <stdlib.h>
 
 typedef actionlib::SimpleActionClient<control_msgs::JointTrajectoryAction> TrajectoryClient;
 typedef actionlib::SimpleActionClient<control_msgs::PointHeadAction> PointClient;
@@ -37,6 +40,8 @@ namespace social_state_machine {
     void spineup();
     void lookatpath();
     void spinedown();
+    void lookatface();
+    void lookatgoal();
 
     void startHeadAction(){ startJointAction(true); }
     void startSpineAction(){ startJointAction(false); }    
@@ -59,9 +64,13 @@ namespace social_state_machine {
     control_msgs::PointHeadGoal point_goal_;
     bool* active_;
     bool debug_;
+    people_msgs::People people_list_;
 
   dynamic_reconfigure::Server<social_state_machine::SocialStateMachineConfig> *dsrv_;
   void reconfigureCB(social_state_machine::SocialStateMachineConfig &config, uint32_t level);
+
+  ros::Subscriber peopleSub_;
+  void peopleCB(const people_msgs::People& people);
   
   };
 };
